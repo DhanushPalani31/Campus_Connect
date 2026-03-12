@@ -10,16 +10,16 @@ import { protectRoute } from "../middleware/authmiddleware.js";
 
 
 
-const router = express.Router();
+const authRoutes = express.Router();
 
-router.post("/register", register);
+authRoutes.post("/register", register);
 
-router.post("/login", login);
+authRoutes.post("/login", login);
 
-router.post("/logout", protectRoute, logout);
+authRoutes.post("/logout", protectRoute, logout);
 
-router.get("/me", protectRoute, getMe);
+authRoutes.get("/me", protectRoute, getMe);
 
 
 
-export default router;
+export default authRoutes;

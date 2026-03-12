@@ -8,37 +8,33 @@ export const protectRoute = async (req, res, next) => {
 
     if (req.cookies.token) {
       token = req.cookies.token;
-    }
-
-    else if (
+    } else if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer")
     ) {
       token = req.headers.authorization.split(" ")[1];
     }
 
-  
     if (!token) {
-      return next(new AppError("Not authorized", 401));
+      return next(new AppError("Not authorized, please login", 401));
     }
-
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-   
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
-      return next(new AppError("User not found", 401));
+      return next(new AppError("User no longer exists", 401));
     }
 
-   
-    req.user = user;
+    // FIXED: added isActive check (was missing)
+    if (!user.isActive) {
+      return next(new AppError("Your account has been disabled", 403));
+    }
 
+    req.user = user;
     next();
   } catch (err) {
     next(err);
   }
 };
-
-

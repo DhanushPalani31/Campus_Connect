@@ -11,42 +11,42 @@ import {
 import { restrictTo } from "../middleware/authorize.js";
 import { protectRoute } from "../middleware/authmiddleware.js";
 
-const router = express.Router();
+const sessionRoutes = express.Router();
 
-router.use(protectRoute);
+sessionRoutes.use(protectRoute);
 
-router.post(
+sessionRoutes.post(
   "/",
   restrictTo("student"),
   createSession
 );
 
-router.get(
+sessionRoutes.get(
   "/my",
   getMySessions
 );
 
-router.put(
+sessionRoutes.put(
   "/:id/confirm",
   restrictTo("alumni"),
   confirmSession
 );
 
-router.put(
+sessionRoutes.put(
   "/:id/cancel",
   cancelSession
 );
 
-router.put(
+sessionRoutes.put(
   "/:id/complete",
   restrictTo("alumni"),
   completeSession
 );
 
-router.post(
+sessionRoutes.post(
   "/:id/review",
   restrictTo("student"),
   submitReview
 );
 
-export default router;
+export default sessionRoutes;

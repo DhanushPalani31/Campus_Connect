@@ -4,21 +4,13 @@ import {
   getAlumniById,
   updateAlumniProfile,
 } from "../controllers/alumniController.js";
-
-import { restrictTo } from "../middleware/authorize.js";
 import { protectRoute } from "../middleware/authmiddleware.js";
+import { restrictTo } from "../middleware/roleMiddleware.js";
 
-const router = express.Router();
 
-router.use(protectRoute)
-router.get("/", getAllAlumni);
+const alumniRoutes = express.Router();
 
-router.get("/:id", getAlumniById);
-
-router.put(
-  "/profile",
-  restrictTo("alumni"),
-  updateAlumniProfile
-);
-
-export default router;
+alumniRoutes.get("/", getAllAlumni);                                // public
+alumniRoutes.get("/:id", getAlumniById);                           // public
+alumniRoutes.put("/profile", protectRoute, restrictTo("alumni"), updateAlumniProfile);
+export default alumniRoutes;

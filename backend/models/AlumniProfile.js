@@ -9,54 +9,58 @@ const alumniSchema = new Schema(
       required: true,
     },
 
+    // NOT required on creation — alumni fills these in profile setup
     bio: {
       type: String,
       maxlength: 500,
-      required: true,
+      default: "",
     },
 
     currentRole: {
       type: String,
-      required: true,
+      default: "",
     },
 
     company: {
       type: String,
-      required: true,
+      default: "",
     },
 
     experience: {
       type: Number,
       min: 0,
       max: 50,
-      required: true,
+      default: 0,
     },
 
     skills: {
       type: [String],
-      required: true,
+      default: [],
     },
 
     sessionRate: {
       type: Number,
       min: 0,
-      required: true,
+      default: 0,
     },
 
-    linkedIn: String,
-    github: String,
-    website: String,
+    linkedIn: { type: String, default: "" },
+    github: { type: String, default: "" },
+    website: { type: String, default: "" },
 
     education: {
-      degree: String,
-      college: String,
-      year: Number,
+      degree: { type: String, default: "" },
+      college: { type: String, default: "" },
+      year: { type: Number, default: null },
     },
 
-    availability: {
-      days: [String],
-      time: String,
-    },
+    // Structured availability: [{ day: "Monday", slots: ["10:00", "14:00"] }]
+    availability: [
+      {
+        day: String,
+        slots: [String],
+      },
+    ],
 
     rating: {
       type: Number,
