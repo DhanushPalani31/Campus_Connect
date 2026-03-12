@@ -1,7 +1,7 @@
 {
-  "name": "alumnibridge-v3",
+  "name": "alumnibridge-jointalent-style",
   "private": true,
-  "version": "3.0.0",
+  "version": "4.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,10 +15,7 @@
     "axios": "^1.6.0",
     "react-hot-toast": "^2.4.1",
     "lucide-react": "^0.363.0",
-    "framer-motion": "^11.1.0",
-    "gsap": "^3.12.5",
-    "@studio-freight/lenis": "^1.0.42",
-    "split-type": "^0.3.4"
+    "framer-motion": "^11.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

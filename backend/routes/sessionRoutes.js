@@ -8,8 +8,10 @@ import {
   submitReview,
 } from "../controllers/sessionController.js";
 
-import { restrictTo } from "../middleware/authorize.js";
-import { protectRoute } from "../middleware/authmiddleware.js";
+
+
+import { restrictTo } from "../middleware/roleMiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
 
 const sessionRoutes = express.Router();
 

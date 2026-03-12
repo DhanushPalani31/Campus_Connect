@@ -4,8 +4,9 @@ import {
   getAlumniById,
   updateAlumniProfile,
 } from "../controllers/alumniController.js";
-import { protectRoute } from "../middleware/authmiddleware.js";
+
 import { restrictTo } from "../middleware/roleMiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
 
 
 const alumniRoutes = express.Router();

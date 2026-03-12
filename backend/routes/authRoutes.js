@@ -6,7 +6,8 @@ import {
   getMe,
 
 } from "../controllers/authController.js";
-import { protectRoute } from "../middleware/authmiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
+
 
 
 

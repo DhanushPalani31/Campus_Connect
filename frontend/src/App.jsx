@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AnimatePresence } from 'framer-motion'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
 
@@ -50,16 +49,16 @@ export default function App() {
           position="bottom-right"
           toastOptions={{
             style: {
-              background: 'var(--ink-3)',
-              color: 'var(--t-primary)',
-              border: '1px solid var(--b-mid)',
-              fontFamily: 'var(--f-body)',
-              fontSize: '0.85rem',
+              background: '#FFFFFF',
+              color: '#0D0D0D',
+              border: '1px solid #EDE8DF',
+              fontFamily: "'DM Sans', system-ui, sans-serif",
+              fontSize: '0.86rem',
               borderRadius: '12px',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+              boxShadow: '0 8px 24px rgba(13,13,13,0.1)',
             },
-            success: { iconTheme: { primary: '#B8FF57', secondary: '#0A0A10' } },
-            error: { iconTheme: { primary: '#FB7185', secondary: '#fff' } },
+            success: { iconTheme: { primary: '#E85D4A', secondary: '#FFFFFF' } },
+            error: { iconTheme: { primary: '#EF4444', secondary: '#FFFFFF' } },
           }}
         />
       </BrowserRouter>
