@@ -5,9 +5,8 @@ import {
   getPaymentHistory,
 } from "../controllers/paymentController.js";
 
-
 import { restrictTo } from "../middleware/roleMiddleware.js";
-import { protectRoute } from "../middleware/authmiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
 
 const paymentRoutes = express.Router();
 

@@ -5,36 +5,40 @@ import { AppError } from "../middleware/errorHandler.js";
 
 export const createSession = async (req, res, next) => {
   try {
-    const {
-      alumniId,
-      alumniProfileId,
-      duration,
-      scheduledAt,
-      topic,
-    } = req.body;
+    const { alumni: alumniProfileId, duration, scheduledAt, topic, message } = req.body;
 
-    const alumni = await User.findById(alumniId);
-
-    if (!alumni || alumni.role !== "alumni") {
-      return next(new AppError("Alumni not found", 404));
+    if (!alumniProfileId) {
+      return next(new AppError("Alumni profile ID is required", 400));
     }
 
-    const profile = await Alumni.findById(alumniProfileId);
+    if (!scheduledAt || !duration || !topic) {
+      return next(new AppError("duration, scheduledAt and topic are required", 400));
+    }
+
+   
+    const profile = await Alumni.findById(alumniProfileId).populate("user", "name email role");
 
     if (!profile) {
       return next(new AppError("Alumni profile not found", 404));
     }
 
-    const rate = profile.sessionRate;
-    const amount = duration === 30 ? rate : rate * 2;
+  
+    if (!profile.user || profile.user.role !== "alumni") {
+      return next(new AppError("Invalid alumni", 404));
+    }
+
+    
+    const rate = profile.sessionRate || 0;
+    const amount = Number(duration) === 60 ? rate * 2 : rate;
 
     const session = await Session.create({
       student: req.user._id,
-      alumni: alumniId,
-      alumniProfile: alumniProfileId,
-      duration,
+      alumni: profile.user._id,     // User _id of the alumni (for auth checks in other routes)
+      alumniProfile: profile._id,   // AlumniProfile _id (for populate, ratings, etc.)
+      duration: Number(duration),
       scheduledAt,
       topic,
+      message: message || "",
       amount,
       status: "pending",
       paymentStatus: "unpaid",
@@ -85,7 +89,6 @@ export const getMySessions = async (req, res, next) => {
   }
 };
 
-
 export const confirmSession = async (req, res, next) => {
   try {
     const session = await Session.findOne({
@@ -119,7 +122,6 @@ export const confirmSession = async (req, res, next) => {
   }
 };
 
-
 export const cancelSession = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id);
@@ -136,15 +138,12 @@ export const cancelSession = async (req, res, next) => {
       return next(new AppError("Unauthorized", 403));
     }
 
-    if (
-      session.status === "completed" ||
-      session.status === "cancelled"
-    ) {
+    if (session.status === "completed" || session.status === "cancelled") {
       return next(new AppError("Cannot cancel this session", 400));
     }
 
     session.status = "cancelled";
-    session.cancelReason = req.body.reason;
+    session.cancelReason = req.body.reason || "";
 
     if (session.paymentStatus === "paid") {
       session.paymentStatus = "refunded";
@@ -180,12 +179,9 @@ export const completeSession = async (req, res, next) => {
     session.status = "completed";
     await session.save();
 
-    await Alumni.findByIdAndUpdate(
-      session.alumniProfile,
-      {
-        $inc: { totalSessions: 1 },
-      }
-    );
+    await Alumni.findByIdAndUpdate(session.alumniProfile, {
+      $inc: { totalSessions: 1 },
+    });
 
     return res.status(200).json({
       success: true,
@@ -201,6 +197,10 @@ export const submitReview = async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
 
+    if (!rating || rating < 1 || rating > 5) {
+      return next(new AppError("Rating must be between 1 and 5", 400));
+    }
+
     const session = await Session.findOne({
       _id: req.params.id,
       student: req.user._id,
@@ -208,7 +208,7 @@ export const submitReview = async (req, res, next) => {
     });
 
     if (!session) {
-      return next(new AppError("Session not found", 404));
+      return next(new AppError("Session not found or not completed", 404));
     }
 
     if (session.review?.rating) {
@@ -217,32 +217,26 @@ export const submitReview = async (req, res, next) => {
 
     session.review = {
       rating,
-      comment,
+      comment: comment || "",
       createdAt: Date.now(),
     };
 
     await session.save();
 
+    // Recalculate alumni average rating from all completed sessions
     const reviews = await Session.find({
       alumni: session.alumni,
       status: "completed",
       "review.rating": { $exists: true },
     });
 
-    const totalRating = reviews.reduce(
-      (sum, item) => sum + item.review.rating,
-      0
-    );
+    const totalRating = reviews.reduce((sum, item) => sum + item.review.rating, 0);
+    const averageRating = parseFloat((totalRating / reviews.length).toFixed(2));
 
-    const averageRating = totalRating / reviews.length;
-
-    await Alumni.findByIdAndUpdate(
-      session.alumniProfile,
-      {
-        rating: averageRating,
-        totalReviews: reviews.length,
-      }
-    );
+    await Alumni.findByIdAndUpdate(session.alumniProfile, {
+      rating: averageRating,
+      totalReviews: reviews.length,
+    });
 
     return res.status(200).json({
       success: true,

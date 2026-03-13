@@ -5,7 +5,9 @@ import { generateToken, setTokenCookie } from "../utils/generateToken.js";
 
 export const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    // ✅ FIX 4: Added `college` to destructuring — RegisterPage sends it but old code never
+    // saved it, so user.college was always undefined after registration.
+    const { name, email, password, role, college } = req.body;
 
     if (!name || !email || !password || !role) {
       return next(new AppError("All fields are required", 400));
@@ -22,6 +24,7 @@ export const register = async (req, res, next) => {
       email,
       password,
       role,
+      college: college || "",   // ✅ FIX 4: Now saved to DB
     });
 
     if (role === "alumni") {
@@ -31,7 +34,6 @@ export const register = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
-
     setTokenCookie(res, token);
 
     res.status(201).json({
@@ -41,6 +43,7 @@ export const register = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        college: user.college, 
         profilePhoto: user.profilePhoto,
       },
     });
@@ -71,7 +74,6 @@ export const login = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
-
     setTokenCookie(res, token);
 
     res.status(200).json({
@@ -81,6 +83,7 @@ export const login = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        college: user.college,
         profilePhoto: user.profilePhoto,
       },
     });
@@ -95,7 +98,7 @@ export const logout = async (req, res, next) => {
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
     });
 
     return res.status(200).json({
@@ -123,6 +126,7 @@ export const getMe = async (req, res, next) => {
         name: req.user.name,
         email: req.user.email,
         role: req.user.role,
+        college: req.user.college,
         profilePhoto: req.user.profilePhoto,
       },
       profile,

@@ -21,7 +21,10 @@ export default function BookSessionPage() {
 
   useEffect(() => {
     if (!user || user.role !== 'student') { nav('/login'); return }
-    alumniApi.one(id).then(d => setAlumni(d.alumni)).catch(() => { toast.error('Not found'); nav('/explore') }).finally(() => setBusy(false))
+    alumniApi.one(id)
+      .then(d => setAlumni(d.alumni))
+      .catch(() => { toast.error('Not found'); nav('/explore') })
+      .finally(() => setBusy(false))
   }, [id])
 
   const rate = alumni?.sessionRate || 0
@@ -32,29 +35,72 @@ export default function BookSessionPage() {
     e.preventDefault()
     if (!form.scheduledAt || !form.topic) { toast.error('Please fill all required fields'); return }
     setSubmitting(true)
+
     try {
-      const sess = await sessionApi.create({ alumni: id, scheduledAt: form.scheduledAt, duration: form.duration, topic: form.topic, message: form.message })
-      const order = await payApi.order({ sessionId: sess.session._id, amount })
-      const script = document.createElement('script')
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-      document.body.appendChild(script)
-      script.onload = () => {
-        const rzp = new window.Razorpay({
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || order.keyId,
-          amount: order.amount, currency: 'INR',
-          name: 'AlumniBridge', description: `Session: ${form.topic}`, order_id: order.orderId,
-          handler: async res => {
-            try { await payApi.verify({ ...res, sessionId: sess.session._id }); toast.success('Booked! 🎉'); nav('/sessions/my') }
-            catch { toast.error('Payment verification failed') }
-          },
-          prefill: { name: user.name, email: user.email },
-          theme: { color: '#E85D4A' },
-          modal: { ondismiss: () => toast('Payment cancelled', { icon: '⚠️' }) }
-        })
-        rzp.open()
-      }
-    } catch (err) { toast.error(err.message) }
-    finally { setSubmitting(false) }
+      // Step 1: Create session in DB
+      const sess = await sessionApi.create({
+        alumni: id,                     // AlumniProfile _id — matches fixed sessionController
+        scheduledAt: form.scheduledAt,
+        duration: form.duration,
+        topic: form.topic,
+        message: form.message,
+      })
+
+      // Step 2: Create Razorpay order
+      const order = await payApi.order({ sessionId: sess.session._id })
+
+      // Step 3: Load Razorpay checkout script dynamically
+      await new Promise((resolve, reject) => {
+        // Avoid loading script twice if already present
+        if (window.Razorpay) { resolve(); return }
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.onload = resolve
+        script.onerror = () => reject(new Error('Failed to load Razorpay. Check your internet connection.'))
+        document.body.appendChild(script)
+      })
+
+      // ✅ FIX 8: Was `order.keyId` — backend returns `key` (see paymentController.js line:
+      // `key: process.env.RAZORPAY_KEY_ID`). Using `order.key` fixes the Razorpay
+      // "Invalid key" error that caused the checkout modal to fail silently.
+      // Fallback to VITE env var in case key is missing from response.
+      const razorpayKey = order.key || import.meta.env.VITE_RAZORPAY_KEY_ID
+
+      const rzp = new window.Razorpay({
+        key: razorpayKey,
+        amount: order.amount,           // in paise (backend already multiplied by 100)
+        currency: order.currency || 'INR',
+        name: 'AlumniBridge',
+        description: `Session: ${form.topic}`,
+        order_id: order.orderId,
+        handler: async res => {
+          try {
+            await payApi.verify({
+              razorpayOrderId: res.razorpay_order_id,
+              razorpayPaymentId: res.razorpay_payment_id,
+              razorpaySignature: res.razorpay_signature,
+              sessionId: sess.session._id,
+            })
+            toast.success('Session booked! 🎉')
+            nav('/sessions/my')
+          } catch {
+            toast.error('Payment verification failed. Contact support.')
+          }
+        },
+        prefill: { name: user.name, email: user.email },
+        theme: { color: '#E85D4A' },
+        modal: {
+          ondismiss: () => toast('Payment cancelled', { icon: '⚠️' })
+        },
+      })
+
+      rzp.open()
+
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (busy) return <div className="page"><Loader /></div>
@@ -135,13 +181,16 @@ export default function BookSessionPage() {
               <div className="eyebrow" style={{ marginBottom: '1.25rem' }}>Booking Summary</div>
               <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--sand)' }}>
                 <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--pale)', border: '2px solid var(--sand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--f-display)', fontSize: '1.1rem', fontWeight: 700, color: 'var(--coral)', flexShrink: 0, overflow: 'hidden' }}>
-                  {alumni.user?.profilePhoto ? <img src={alumni.user.profilePhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : alumni.user?.name?.[0]}
+                  {alumni.user?.profilePhoto
+                    ? <img src={alumni.user.profilePhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : alumni.user?.name?.[0]}
                 </div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{alumni.user?.name}</div>
                   <div className="t-xs" style={{ marginTop: '0.15rem' }}>{alumni.currentRole}{alumni.company ? ` · ${alumni.company}` : ''}</div>
                 </div>
               </div>
+
               {[
                 { l: 'Duration', v: `${form.duration} minutes` },
                 { l: 'Topic', v: form.topic || '—' },
@@ -152,6 +201,7 @@ export default function BookSessionPage() {
                   <span className="t-sm" style={{ textAlign: 'right', maxWidth: '60%' }}>{row.v}</span>
                 </div>
               ))}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', marginTop: '0.5rem', borderTop: '1px solid var(--sand)' }}>
                 <span className="eyebrow">Total</span>
                 <span style={{ fontFamily: 'var(--f-display)', fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--coral)' }}>₹{amount}</span>

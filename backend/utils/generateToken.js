@@ -5,7 +5,7 @@ export const generateToken = (userId) => {
     { id: userId },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRE,
+      expiresIn: "7d",
     }
   );
 };
@@ -16,7 +16,7 @@ export const setTokenCookie = (res, token) => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
