@@ -1,40 +1,29 @@
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
-import { AppError } from "./errorHandler.js";
+import jwt from 'jsonwebtoken'
+import User from '../models/User.js'
 
 export const protectRoute = async (req, res, next) => {
   try {
-    let token;
+    // Read token from cookie OR Authorization header
+    let token = req.cookies?.token
 
-    if (req.cookies.token) {
-      token = req.cookies.token;
-    } else if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1]
     }
 
     if (!token) {
-      return next(new AppError("Not authorized, please login", 401));
+      return res.status(401).json({ message: 'Not authorized, please login' })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id).select("-password");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const user = await User.findById(decoded.id).select('-password')
 
     if (!user) {
-      return next(new AppError("User no longer exists", 401));
+      return res.status(401).json({ message: 'User not found' })
     }
 
-    // FIXED: added isActive check (was missing)
-    if (!user.isActive) {
-      return next(new AppError("Your account has been disabled", 403));
-    }
-
-    req.user = user;
-    next();
-  } catch (err) {
-    next(err);
+    req.user = user
+    next()
+  } catch (error) {
+    return res.status(401).json({ message: 'Not authorized, please login' })
   }
-};
+}
